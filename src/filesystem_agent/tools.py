@@ -1,11 +1,10 @@
 import os
-
-__all__ = ["tool_schemas"]
-
 from typing import Callable
 
 from anthropic.types import ToolParam
-from anthropic.types.tool_param import InputSchema
+from anthropic.types.tool_param import InputSchemaTyped
+
+__all__ = ["tool_schemas"]
 
 
 def list_dir(path: str) -> list[str]:
@@ -21,7 +20,7 @@ _TOOL_REGISTRY: dict[str, tuple[ToolParam, Callable]] = {
         ToolParam(
             name="list_dir",
             description="List the contents of a directory.",
-            input_schema=InputSchema(
+            input_schema=InputSchemaTyped(
                 type="object",
                 properties={
                     "path": {
@@ -30,18 +29,20 @@ _TOOL_REGISTRY: dict[str, tuple[ToolParam, Callable]] = {
                     },
                 },
                 required=["path"],
-            ), ),
+            ),
+        ),
         list_dir,
     ),
     "cwd": (
         ToolParam(
             name="cwd",
             description="Get the current working directory.",
-            input_schema=InputSchema(
+            input_schema=InputSchemaTyped(
                 type="object",
                 properties={},
                 required=[],
-            ), ),
+            ),
+        ),
         cwd,
     ),
 }

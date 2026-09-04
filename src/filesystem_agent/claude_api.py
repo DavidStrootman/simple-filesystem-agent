@@ -1,9 +1,24 @@
-from anthropic import AnthropicError, BadRequestError, AuthenticationError, PermissionDeniedError, NotFoundError, \
-    UnprocessableEntityError, RateLimitError, InternalServerError, APIConnectionError, ConflictError
-from anthropic.types import MessageParam, ToolChoiceAutoParam, ToolChoiceParam, ToolChoiceNoneParam, ToolUnionParam, \
-    ToolParam
+from anthropic import (
+    AnthropicError,
+    APIConnectionError,
+    AuthenticationError,
+    BadRequestError,
+    ConflictError,
+    InternalServerError,
+    NotFoundError,
+    PermissionDeniedError,
+    RateLimitError,
+    UnprocessableEntityError,
+)
+from anthropic.types import (
+    MessageParam,
+    ToolChoiceAutoParam,
+    ToolChoiceNoneParam,
+    ToolChoiceParam,
+    ToolParam,
+)
 
-from config import Config
+import config
 
 
 def create_message(client, message_param: MessageParam, tool_schemas: list[ToolParam] | None = None):
@@ -14,13 +29,12 @@ def create_message(client, message_param: MessageParam, tool_schemas: list[ToolP
         tools = tool_schemas
     try:
         return client.messages.create(
-            max_tokens=Config.max_tokens,
+            max_tokens=config.max_tokens,
             messages=[message_param],
-            model=Config.default_model,
-            thinking=Config.thinking_level,
+            model=config.default_model,
+            thinking=config.thinking_level,
             tool_choice=tool_choice,
-            tools=tools
-
+            tools=tools,
         )
     except BadRequestError as e:
         # 400 — malformed request (bad params, bad tool schema). Not retryable; fix the call.
