@@ -24,8 +24,8 @@ class FilesystemAgent:
         )
 
     def ask(self, question: str):
-        print(f"User message: {question}")
-        logger.info("User message: %s", question)
+        print(f"Question: {question}")
+        logger.info("USER | Message: %s", question)
         message_user = MessageParam(content=question, role="user")
         message_resp: Message = claude_api.create_message(
             self.client, message_user, tool_schemas
@@ -35,14 +35,14 @@ class FilesystemAgent:
         for content in resp_content:
             match content:
                 case TextBlock(text=text):
-                    agent_message = f"Agent message: {text}"
+                    agent_message = f"Agent response: {text}"
                     print(agent_message)
-                    logger.info(agent_message)
+                    logger.info("AGENT| Message: %s", text)
                 case ThinkingBlock(thinking=thinking):
-                    logger.debug("Thinking: %s", thinking)
+                    logger.debug("AGENT| Thinking: %s", thinking)
                 case ToolUseBlock(name=name):
                     # TODO: Handle tool use block
-                    logger.debug("Tool use: %s", name)
+                    logger.debug("AGENT| Tool use: %s", name)
                 case _:
                     raise RuntimeError(
                         f"Could not parse unexpected content type {type(content)}."
