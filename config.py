@@ -13,4 +13,4 @@ class _Models(StrEnum):
 max_tokens = 2500
 default_model = _Models.CLAUDE_SONNET_5
 
-thinking_level = ThinkingConfigAdaptiveParam(type="adaptive")
+thinking_level = ThinkingConfigAdaptiveParam(type="adaptive", display="summarized")

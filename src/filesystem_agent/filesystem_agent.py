@@ -1,10 +1,20 @@
+import logging
 import os
 
 from anthropic import Anthropic
-from anthropic.types import ContentBlock, Message, MessageParam, TextBlock
+from anthropic.types import (
+    ContentBlock,
+    Message,
+    MessageParam,
+    TextBlock,
+    ThinkingBlock,
+    ToolUseBlock,
+)
 
 from src.filesystem_agent import claude_api
 from src.filesystem_agent.filesystem_tools import tool_schemas
+
+logger = logging.getLogger(__name__)
 
 
 class FilesystemAgent:
@@ -15,6 +25,7 @@ class FilesystemAgent:
 
     def ask(self, question: str):
         print(f"User message: {question}")
+        logger.info("User message: %s", question)
         message_user = MessageParam(content=question, role="user")
         message_resp: Message = claude_api.create_message(
             self.client, message_user, tool_schemas
@@ -26,6 +37,12 @@ class FilesystemAgent:
                 case TextBlock(text=text):
                     agent_message = f"Agent message: {text}"
                     print(agent_message)
+                    logger.info(agent_message)
+                case ThinkingBlock(thinking=thinking):
+                    logger.debug("Thinking: %s", thinking)
+                case ToolUseBlock(name=name):
+                    # TODO: Handle tool use block
+                    logger.debug("Tool use: %s", name)
                 case _:
                     raise RuntimeError(
                         f"Could not parse unexpected content type {type(content)}."
