@@ -6,3 +6,9 @@ dependencies = [
     "anthropic>=0.125.0",
     "python-dotenv>=1.2.1",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.6",
+    "ty>=0.0.78",
+]

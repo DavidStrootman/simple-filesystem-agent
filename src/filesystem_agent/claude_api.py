@@ -21,7 +21,9 @@ from anthropic.types import (
 import config
 
 
-def create_message(client, message_param: MessageParam, tool_schemas: list[ToolParam] | None = None):
+def create_message(
+    client, message_param: MessageParam, tool_schemas: list[ToolParam] | None = None
+):
     tool_choice: ToolChoiceParam = ToolChoiceNoneParam(type="none")
     tools: list[ToolParam] = []
     if tool_schemas:
@@ -38,7 +40,9 @@ def create_message(client, message_param: MessageParam, tool_schemas: list[ToolP
         )
     except BadRequestError as e:
         # 400 — malformed request (bad params, bad tool schema). Not retryable; fix the call.
-        e.add_note("Malformed request — check model params, messages, and tool schemas.")
+        e.add_note(
+            "Malformed request — check model params, messages, and tool schemas."
+        )
         raise
     except AuthenticationError as e:
         # 401 — missing or invalid API key. Not retryable.
@@ -46,7 +50,9 @@ def create_message(client, message_param: MessageParam, tool_schemas: list[ToolP
         raise
     except PermissionDeniedError as e:
         # 403 — key valid but lacks permission for this resource (model, workspace, ...). Not retryable.
-        e.add_note("Permission denied — this API key can't access the requested resource.")
+        e.add_note(
+            "Permission denied — this API key can't access the requested resource."
+        )
         raise
     except NotFoundError as e:
         # 404 — e.g. unknown model string. Not retryable.
@@ -58,7 +64,9 @@ def create_message(client, message_param: MessageParam, tool_schemas: list[ToolP
         raise
     except UnprocessableEntityError as e:
         # 422 — well-formed request, semantically invalid. Not retryable.
-        e.add_note("Unprocessable request — the payload was well-formed but semantically invalid.")
+        e.add_note(
+            "Unprocessable request — the payload was well-formed but semantically invalid."
+        )
         raise
     except RateLimitError as e:
         # 429 — SDK already retried internally before this fires. Note retry-after if present.
@@ -71,7 +79,9 @@ def create_message(client, message_param: MessageParam, tool_schemas: list[ToolP
         raise
     except APIConnectionError as e:
         # Network/connection failure, including APITimeoutError (its subclass). SDK already retried.
-        e.add_note("Network error contacting the Anthropic API — check connectivity and retry.")
+        e.add_note(
+            "Network error contacting the Anthropic API — check connectivity and retry."
+        )
         raise
     except AnthropicError as e:
         # Catch-all for any other AnthropicError not named above.

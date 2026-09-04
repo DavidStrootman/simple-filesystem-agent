@@ -6,7 +6,7 @@ from src.filesystem_agent.filesystem_agent import FilesystemAgent
 def main():
     env_loaded = load_dotenv()
     if not env_loaded:
-        raise Exception("Environment variables file `.env` not found.")
+        raise RuntimeError("Environment variables file `.env` not found.")
 
     agent = FilesystemAgent()
     question = input("Enter your question: ")

@@ -1,5 +1,5 @@
 import os
-from typing import Callable
+from collections.abc import Callable
 
 from anthropic.types import ToolParam
 from anthropic.types.tool_param import InputSchemaTyped
@@ -47,4 +47,4 @@ _TOOL_REGISTRY: dict[str, tuple[ToolParam, Callable]] = {
     ),
 }
 
-tool_schemas = [schema for _name, schema in _TOOL_REGISTRY.items()]
+tool_schemas: list[ToolParam] = [param for param, _func in _TOOL_REGISTRY.values()]
