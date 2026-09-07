@@ -7,8 +7,8 @@ from anthropic.types.tool_param import InputSchemaTyped
 __all__ = ["tool_schemas"]
 
 
-def list_dir(path: str) -> list[str]:
-    return os.listdir(path)
+def list_dir(path: str) -> str:
+    return "\n".join(os.listdir(path))
 
 
 def cwd() -> str:
@@ -48,3 +48,9 @@ _TOOL_REGISTRY: dict[str, tuple[ToolParam, Callable]] = {
 }
 
 tool_schemas: list[ToolParam] = [param for param, _func in _TOOL_REGISTRY.values()]
+
+
+def dispatch(name: str, **kwargs) -> tuple[str, bool]:
+    # TODO: Error handling
+    is_error = False
+    return _TOOL_REGISTRY[name][1](**kwargs), is_error

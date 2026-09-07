@@ -22,7 +22,7 @@ import config
 
 
 def create_message(
-    client, message_param: MessageParam, tool_schemas: list[ToolParam] | None = None
+    client, prev_built_message: list[MessageParam], tool_schemas: list[ToolParam] | None = None
 ):
     tool_choice: ToolChoiceParam = ToolChoiceNoneParam(type="none")
     tools: list[ToolParam] = []
@@ -32,7 +32,7 @@ def create_message(
     try:
         return client.messages.create(
             max_tokens=config.max_tokens,
-            messages=[message_param],
+            messages=prev_built_message,
             model=config.default_model,
             thinking=config.thinking_level,
             tool_choice=tool_choice,
