@@ -22,12 +22,16 @@ import config
 
 
 def create_message(
-    client, prev_built_message: list[MessageParam], tool_schemas: list[ToolParam] | None = None
+    client,
+    prev_built_message: list[MessageParam],
+    tool_schemas: list[ToolParam] | None = None,
 ):
     tool_choice: ToolChoiceParam = ToolChoiceNoneParam(type="none")
     tools: list[ToolParam] = []
     if tool_schemas:
-        tool_choice = ToolChoiceAutoParam(type="auto", disable_parallel_tool_use=True)
+        tool_choice = ToolChoiceAutoParam(
+            type="auto", disable_parallel_tool_use=config.disable_parallel_tool_use
+        )
         tools = tool_schemas
     try:
         return client.messages.create(

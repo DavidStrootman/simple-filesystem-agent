@@ -14,3 +14,4 @@ max_tokens = 2500
 default_model = _Models.CLAUDE_SONNET_5
 
 thinking_level = ThinkingConfigAdaptiveParam(type="adaptive", display="summarized")
+disable_parallel_tool_use = False

@@ -19,11 +19,15 @@ logger = logging.getLogger(__name__)
 
 
 def _log_agent_message(message: str, level=logging.DEBUG):
-    logger.log(level=level, msg="AGENT| " + message)
+    logger.log(level=level, msg="AGENT | " + message)
 
 
 def _log_user_message(message: str, level=logging.DEBUG):
-    logger.log(level=level, msg="USER | " + message)
+    logger.log(level=level, msg="USER  | " + message)
+
+
+def _log_system_message(message: str, level=logging.DEBUG):
+    logger.log(level=level, msg="SYSTEM| " + message)
 
 
 class FilesystemAgent:
@@ -32,22 +36,32 @@ class FilesystemAgent:
             api_key=os.environ.get("ANTHROPIC_API_KEY"),
         )
 
-    def ask(self, question: str):
-        print(f"Question: {question}")
-        _log_user_message(f"Question: {question}", level=logging.INFO)
-        message_user = MessageParam(content=question, role="user")
-        return self._looped_messaging(message_user)
+    def ask(self):
+        message_history: list[MessageParam] = []
+        _log_system_message("Filesystem agent started. Starting conversation.")
+        while True:
+            question = input("Enter your question or type 'exit' to quit: ")
+            if question.lower() == "exit":
+                _log_system_message("Exiting conversation.")
+                break
+            print(f"Question: {question}")
+            _log_user_message(message=f"Question: {question}", level=logging.INFO)
+            message_history.append(MessageParam(content=question, role="user"))
+            message_history: list[MessageParam] = self._message_loop(message_history)
+            _log_system_message("Response completed. Waiting for next question.")
 
-    def _looped_messaging(self, initial_message: MessageParam):
-        message_list: list[MessageParam] = [initial_message]
+    def _message_loop(self, message_history: list[MessageParam]) -> list[MessageParam]:
         done = False
         while not done:
             message_resp: Message = claude_api.create_message(
-                self.client, message_list, tool_schemas
+                self.client,
+                prev_built_message=message_history,
+                tool_schemas=tool_schemas,
             )
 
             new_messages, done = self.handle_stop_reason(message_resp)
-            message_list.extend(new_messages)
+            message_history.extend(new_messages)
+        return message_history
 
     def handle_stop_reason(
         self, message_resp: Message
@@ -64,31 +78,38 @@ class FilesystemAgent:
                 message_params = self.handle_content_blocks(
                     message_resp, message_params
                 )
+                _log_agent_message("Stop reason: End of response")
                 end_of_turn = True
             case "max_tokens":
                 message_params = self.handle_content_blocks(
                     message_resp, message_params
                 )
+                _log_agent_message("Stop reason: Max tokens reached")
                 end_of_turn = True
             case "stop_sequence":
                 # TODO: Implement stop sequence handling (and passing?)
+                _log_agent_message("Stop reason: Stop sequence received")
                 raise RuntimeError(
                     "Stop sequence received but stop sequences are not implemented."
                 )
             case "tool_use":
+                _log_agent_message("Stop reason: Tool use received")
                 message_params = self.handle_content_blocks(
                     message_resp, message_params
                 )
             case "pause_turn":
+                _log_agent_message("Stop reason: Pause turn received")
                 # Pause turn indicates the server has exceeded its limits for a single request. Send the complete received message back in without modification.
                 message_params = self.handle_content_blocks(
                     message_resp, message_params
                 )
             case "refusal":
+                _log_agent_message("Stop reason: Refusal received")
                 # Server or model refused the request. Retry with changes made based on the stop_details.
                 # TODO
                 raise RuntimeError("Server or model refused the request.")
             case "model_context_window_exceeded":
+                _log_agent_message("Stop reason: Model context window exceeded")
                 # Context window was exceeded which has likely truncated the output. This state should have been prevented.
                 # TODO
                 message_params = self.handle_content_blocks(
@@ -105,26 +126,34 @@ class FilesystemAgent:
     ) -> list[MessageParam]:
         """Loop over all tool usage, in case parallel tool use is enabled. Only return after all blocks are run."""
         tool_result_params: list[ToolResultBlockParam] = []
+        multiple_tool_use = (
+            len([block for block in message_resp.content if block.type == "tool_use"])
+            > 1
+        )
+        if multiple_tool_use:
+            _log_agent_message("Requested multiple tool usage.")
         for block in message_resp.content:
             match block:
                 case ToolUseBlock() as tool_use_block:
                     tool_result_params.append(
-                        self.handle_tool_use_block(tool_use_block)
+                        BlockHandler.handle_tool_use_block(tool_use_block)
                     )
                 case TextBlock() as block:
-                    self.handle_text_block(block)
+                    BlockHandler.handle_text_block(block)
                 case ThinkingBlock() as block:
-                    self.handle_thinking_block(block)
+                    BlockHandler.handle_thinking_block(block)
                 case _:
                     raise NotImplementedError(
                         f"Unexpected content type {type(block)}. Implement before continuing"
                     )
-        message_params.append(MessageParam(role="user", content=tool_result_params))
+        if tool_result_params:
+            message_params.append(MessageParam(role="user", content=tool_result_params))
         return message_params
 
-    def handle_tool_use_block(
-        self, tool_use_block: ToolUseBlock
-    ) -> ToolResultBlockParam:
+
+class BlockHandler:
+    @staticmethod
+    def handle_tool_use_block(tool_use_block: ToolUseBlock) -> ToolResultBlockParam:
         _log_agent_message(f"Request tool use: {tool_use_block.name}")
         tool_result, is_error = dispatch(tool_use_block.name, **tool_use_block.input)
         return ToolResultBlockParam(
@@ -134,9 +163,11 @@ class FilesystemAgent:
             is_error=is_error,
         )
 
-    def handle_text_block(self, block: TextBlock):
-        print(block.text, end="")
+    @staticmethod
+    def handle_text_block(block: TextBlock):
+        print(block.text)
         _log_agent_message(f"Message: {block.text}", level=logging.INFO)
 
-    def handle_thinking_block(self, block: ThinkingBlock):
-        _log_agent_message(f"Thought: {block.thinking}")
+    @staticmethod
+    def handle_thinking_block(block: ThinkingBlock):
+        _log_agent_message(f"Thought: {block.thinking}", level=logging.INFO)
