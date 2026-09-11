@@ -217,7 +217,7 @@ _TOOL_REGISTRY: dict[str, tuple[ToolParam, Callable]] = {
             ),
             input_examples=[
                 {"path": "."},
-                {"path": "repos/anthropic_cert", "pattern": "*.py"},
+                {"path": "repos/simple-filesystem-agent", "pattern": "*.py"},
             ],
         ),
         search_files,
