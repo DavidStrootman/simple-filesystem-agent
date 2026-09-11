@@ -5,9 +5,9 @@ from pathlib import Path
 from anthropic.types import ToolParam
 from anthropic.types.tool_param import InputSchemaTyped
 
-__all__ = ["dispatch", "tool_schemas"]
-
 import config
+
+__all__ = ["dispatch", "tool_schemas"]
 
 
 def to_real_path(path: str) -> Path:
@@ -67,6 +67,27 @@ def get_file_content(path: str, n_characters: int = 25000) -> str:
         if len(content) >= 25000:
             return content + "...More content available in the file."
         return content
+
+
+_MAX_SEARCH_RESULTS = 200
+
+
+def search_files(path: str, pattern: str = "*") -> str:
+    real = to_real_path(path)
+    matches = sorted(real.rglob(pattern))
+    truncated = len(matches) > _MAX_SEARCH_RESULTS
+    matches = matches[:_MAX_SEARCH_RESULTS]
+
+    lines = [
+        to_virtual_path(match) + ("/" if match.is_dir() else "") for match in matches
+    ]
+    result = "\n".join(lines)
+    if truncated:
+        result += (
+            f"\n...{_MAX_SEARCH_RESULTS} results shown, more are available. "
+            "Narrow the pattern or path to see the rest."
+        )
+    return result
 
 
 _PATH_DESCRIPTION_SUFFIX = (
@@ -164,6 +185,42 @@ _TOOL_REGISTRY: dict[str, tuple[ToolParam, Callable]] = {
             ],
         ),
         get_file_content,
+    ),
+    "search_files": (
+        ToolParam(
+            name="search_files",
+            description=(
+                "Recursively search a directory for files and subdirectories "
+                "matching a glob pattern, at any depth. Use this instead of "
+                "repeatedly calling list_dir on nested folders one at a time — "
+                "one call here covers the whole subtree."
+            ),
+            input_schema=InputSchemaTyped(
+                type="object",
+                properties={
+                    "path": {
+                        "type": "string",
+                        "description": "Directory to search, recursively."
+                        + _PATH_DESCRIPTION_SUFFIX,
+                    },
+                    "pattern": {
+                        "type": "string",
+                        "description": (
+                            "Glob pattern to match, e.g. '*' for everything, "
+                            "'*.py' for Python files at any depth, "
+                            "'config*' for names starting with 'config'. "
+                            "Defaults to '*' (match everything)."
+                        ),
+                    },
+                },
+                required=["path"],
+            ),
+            input_examples=[
+                {"path": "."},
+                {"path": "repos/anthropic_cert", "pattern": "*.py"},
+            ],
+        ),
+        search_files,
     ),
 }
 

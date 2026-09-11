@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Literal
 
 from anthropic import Anthropic
 from anthropic.types import (
@@ -18,16 +19,24 @@ from src.filesystem_agent.filesystem_tools import dispatch, tool_schemas
 logger = logging.getLogger(__name__)
 
 
-def _log_agent_message(message: str, level=logging.DEBUG):
-    logger.log(level=level, msg="AGENT | " + message)
+def _log(
+    actor: Literal["AGENT", "USER", "SYSTEM"], message: str, level: int = logging.DEBUG
+) -> None:
+    # actor is its own LogRecord field, formatted as a column by
+    # logging_config.py's "actor" format entry.
+    logger.log(level, message, extra={"actor": actor})
 
 
-def _log_user_message(message: str, level=logging.DEBUG):
-    logger.log(level=level, msg="USER  | " + message)
+def _log_agent_message(message: str, level: int = logging.DEBUG) -> None:
+    _log("AGENT", message, level)
 
 
-def _log_system_message(message: str, level=logging.DEBUG):
-    logger.log(level=level, msg="SYSTEM| " + message)
+def _log_user_message(message: str, level: int = logging.DEBUG) -> None:
+    _log("USER", message, level)
+
+
+def _log_system_message(message: str, level: int = logging.DEBUG) -> None:
+    _log("SYSTEM", message, level)
 
 
 class FilesystemAgent:
@@ -45,12 +54,18 @@ class FilesystemAgent:
                 _log_system_message("Exiting conversation.")
                 break
             print(f"Question: {question}")
-            _log_user_message(message=f"Question: {question}", level=logging.INFO)
             message_history.append(MessageParam(content=question, role="user"))
             message_history: list[MessageParam] = self._message_loop(message_history)
             _log_system_message("Response completed. Waiting for next question.")
 
     def _message_loop(self, message_history: list[MessageParam]) -> list[MessageParam]:
+        # Every caller passes through here before the first API call, so this
+        # is the one place a pending user question always gets logged.
+        if message_history and message_history[-1]["role"] == "user":
+            pending = message_history[-1]["content"]
+            if isinstance(pending, str):
+                _log_user_message(f"Question: {pending}", level=logging.INFO)
+
         done = False
         while not done:
             message_resp: Message = claude_api.create_message(
@@ -124,7 +139,10 @@ class FilesystemAgent:
         message_resp: Message,
         message_params: list[MessageParam],
     ) -> list[MessageParam]:
-        """Loop over all tool usage, in case parallel tool use is enabled. Only return after all blocks are run."""
+        """Process every content block in the response, collecting all tool
+        results into a single combined tool_result turn — required even
+        when only one tool was called, and essential when parallel tool use
+        returns several at once."""
         tool_result_params: list[ToolResultBlockParam] = []
         multiple_tool_use = (
             len([block for block in message_resp.content if block.type == "tool_use"])

@@ -25,7 +25,11 @@ LOGGING = {
     "formatters": {
         "default": {
             "()": SingleLineFormatter,
-            "format": "%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+            "format": "%(asctime)s %(levelname)-8s %(name)s %(actor)-6s->    %(message)s",
+            # Records from outside this app (anthropic, httpx2, ...), reaching
+            # root's handlers, never carry an "actor" field — this fallback is
+            # what stops %(actor)s from raising KeyError on those.
+            "defaults": {"actor": ""},
         },
     },
     "handlers": {
